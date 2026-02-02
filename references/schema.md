@@ -7,7 +7,7 @@ This document defines the canonical schemas for the Claw Agent Protocol shelves.
 Every object returned by a CAP connector includes the following metadata fields:
 
 | Field | Type | Description |
-|---|---|---|
+| --- | --- | --- |
 | `id` | string | A stable, unique identifier for the object, ideally from the source system. |
 | `created_at` | ISO8601 | The timestamp when the object was created at the source. |
 | `updated_at` | ISO8601 | The timestamp when the object was last modified at the source. |
