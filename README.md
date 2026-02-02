@@ -64,41 +64,147 @@ This skill transforms a general-purpose AI agent into a specialized personal dat
 
 ## Quick Start
 
-### Example 1: Daily Briefing
+Once you've installed the skill and connected your CAP server, you can start using these prompts with your OpenClaw agent. Simply copy and paste these commands—no coding required.
 
-```python
-# Agent executes the today_briefing tool
-tools.today_briefing()
+### Example 1: Get Your Daily Briefing
 
-# Returns: Calendar events, due tasks, and recent communications for today
+**Copy this prompt:**
+```
+Give me my daily briefing using CAP
 ```
 
-### Example 2: Query High-Priority Tasks
+**What happens:** Your agent will fetch today's calendar events, due tasks, and recent communications, then format them into a readable summary.
 
-```python
-# Agent constructs a query
-query = "cap://tasks?status=pending&priority=high&due_date_end=+7days"
+---
 
-# Or uses the query builder
-python scripts/build_query.py "show me high priority tasks due this week"
-# Output: cap://tasks?due_date_start=today&due_date_end=+7days&priority=high&type=task
+### Example 2: Find High-Priority Tasks Due This Week
+
+**Copy this prompt:**
+```
+Show me all high-priority tasks due this week from my CAP data
 ```
 
-### Example 3: Validate Data
+**What happens:** Your agent will query your tasks shelf and return all pending high-priority items with due dates in the next 7 days.
 
-```python
-# Validate a task object
-python scripts/validate_cap_data.py '{"id": "task-123", "type": "task", ...}' tasks
-# Output: ✅ VALIDATION PASSED
+---
+
+### Example 3: Check Unread Emails from a Specific Person
+
+**Copy this prompt:**
+```
+Show me unread emails from john@example.com using CAP
 ```
 
-### Example 4: Export Calendar Events
+**What happens:** Your agent will query your communications shelf and return all unread emails from that sender.
 
-```python
-# Export calendar data to Markdown
-python scripts/export_cap_data.py --format markdown --shelf calendar --output events.md --data '[...]'
-# Output: ✅ Exported 15 items to events.md
+---
+
+### Example 4: Get This Week's Calendar Events
+
+**Copy this prompt:**
 ```
+What's on my calendar this week? Use CAP to get the events
+```
+
+**What happens:** Your agent will fetch all confirmed calendar events for the next 7 days.
+
+---
+
+### Example 5: Find All Notes Tagged with a Specific Topic
+
+**Copy this prompt:**
+```
+Find all my notes tagged with "project-alpha" using CAP
+```
+
+**What happens:** Your agent will search your docs shelf for notes with that tag.
+
+---
+
+### Example 6: Get Client Communication History
+
+**Copy this prompt:**
+```
+Show me all communications with Acme Corp from the last 30 days using CAP
+```
+
+**What happens:** Your agent will query both your identity shelf (to find Acme Corp contacts) and comms shelf (to get recent messages/emails).
+
+---
+
+### Example 7: List All Blocked Tasks
+
+**Copy this prompt:**
+```
+What tasks are currently blocked? Check CAP
+```
+
+**What happens:** Your agent will query your tasks shelf for items with status="blocked" and show you what's stuck.
+
+---
+
+### Example 8: Find Meetings with a Specific Person This Month
+
+**Copy this prompt:**
+```
+Show me all meetings with sarah@example.com this month from CAP
+```
+
+**What happens:** Your agent will query your calendar shelf filtered by attendee email.
+
+---
+
+### Example 9: Get All VIP Contacts
+
+**Copy this prompt:**
+```
+Show me all contacts tagged as VIP in CAP
+```
+
+**What happens:** Your agent will query your identity shelf for people/orgs with the "vip" tag.
+
+---
+
+### Example 10: Search Across All Documents
+
+**Copy this prompt:**
+```
+Search my CAP documents for anything related to "quarterly budget"
+```
+
+**What happens:** Your agent will use the knowledge_search tool to find all docs, notes, and files mentioning that topic.
+
+---
+
+### Example 11: Weekly Planning Session
+
+**Copy this prompt:**
+```
+Help me plan next week. Show me my calendar, pending tasks, and any upcoming deadlines from CAP
+```
+
+**What happens:** Your agent will aggregate data from multiple shelves (calendar, tasks) to give you a comprehensive weekly overview.
+
+---
+
+### Example 12: Export Your Tasks to a File
+
+**Copy this prompt:**
+```
+Export all my pending tasks from CAP to a markdown file
+```
+
+**What happens:** Your agent will query your tasks shelf and use the export script to create a formatted markdown file you can download.
+
+---
+
+## Pro Tips
+
+- **Be specific about time ranges**: "this week", "next month", "last 30 days"
+- **Mention CAP explicitly**: This helps your agent know to use this skill
+- **Combine shelves**: Ask for cross-referenced data like "meetings and related emails"
+- **Use tags**: If you tag your data, you can filter by tags in your prompts
+- **Ask for exports**: Your agent can export data to CSV, JSON, or Markdown formats
 
 ## Architecture
 
@@ -232,11 +338,6 @@ CAP is created by Jason Fleagle. Jason is a Chief AI Officer and Growth Consulta
 ## Acknowledgments
 - Inspired by the Model Context Protocol (MCP) standard
 
-## Links
-
-- [CAP GitHub Repository](https://github.com/jfleagl12/claw-agent-protocol)
-- [CAP Whitepaper](https://github.com/jfleagl12/claw-agent-protocol/blob/main/docs/whitepaper.md)
-- [Manus Skills Documentation](https://manus.im/docs/en/features/skills)
 
 ---
 
