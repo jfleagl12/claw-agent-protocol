@@ -1,118 +1,40 @@
-# CAP Schema Reference
+# CAP 0.2 runtime contract
 
-This document defines the canonical schemas for the Claw Agent Protocol shelves. In CAP, this schema is applied **in-memory** to data fetched from external sources; it is not a database schema.
+Executable schemas live in `src/cap_runtime/models.py`; `cap schema` prints the search input JSON Schema. MCP tool discovery provides each tool's complete input/output schema.
 
-## Common Metadata
+## Search request
 
-Every object returned by a CAP connector includes the following metadata fields:
+Required: `account`, `shelf` (`comms` or `calendar`), `start`, `end`. Dates must include offsets, end must be later than start, and a request may span at most 366 days.
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `id` | string | A stable, unique identifier for the object, ideally from the source system. |
-| `created_at` | ISO8601 | The timestamp when the object was created at the source. |
-| `updated_at` | ISO8601 | The timestamp when the object was last modified at the source. |
-| `source` | SourcePointer | An object containing provenance information. |
-| `confidence` | float | A score from 0.0 to 1.0 indicating the confidence in the normalization. |
-| `sensitivity` | string | The sensitivity tier of the data (S1, S2, S3). |
+Optional: `text` (literal subject/preview substring), `participant` (exact email), `unread` (comms only), `limit` (1–100, default 20), and opaque `cursor`.
 
-### SourcePointer Object
+Mail intervals are `[start, end)` by received time. Calendar intervals select overlapping events. Filters are ANDed. Unknown fields and unsupported shelves are rejected, rather than silently ignored. Text/participant filtering is performed locally over bounded provider pages.
 
-```json
-{
-  "system": "google_calendar",
-  "external_id": "a1b2c3d4e5f6",
-  "url": "https://calendar.google.com/event?eid=..."
-}
-```
+## Item
 
-## Shelf Schemas
+Every item has `id`, `shelf`, `title`, `preview`, `source`, `retrieved_at`, optional `updated_at` (not selected in calendar search), `sensitivity`, and `content_trust="untrusted"`.
 
-### Identity (`cap://identity`)
+`source` includes `system`, `account`, `external_id`, and a URL when the provider supplies one. Use the tuple of account, shelf, and external ID for `cap_get`; do not parse the composite ID. Microsoft's immutable-ID preference is used for Outlook requests.
 
-Represents people, organizations, and their contact information.
+Mail adds `timestamp`, `sender`, `recipients`, and `is_read`. Calendar adds `start_time`, `end_time`, `all_day`, `attendees`, and `cancelled`. Provider body previews are bounded to 1,200 characters. Complete bodies and attachments are not returned.
 
-```json
-{
-  "id": "string",
-  "type": "person | org | role",
-  "name": {
-    "full": "string",
-    "display": "string"
-  },
-  "emails": ["string"],
-  "phones": ["string"],
-  "tags": ["string"]
-}
-```
+`S3` reflects Microsoft private/confidential flags; other data is labeled `S2`. This is not comprehensive content classification. No synthetic confidence scores or invented creation timestamps are supplied.
 
-### Comms (`cap://comms`)
+## Search result
 
-Represents messages, emails, and communication threads.
+- `items`: matching normalized evidence.
+- `complete`: true only when the requested search is exhausted without omitted records or errors. A demo information warning does not change completeness within the synthetic dataset.
+- `next_cursor`: repeat the same request with this token to continue. It expires after one hour and binds filters, limits, configured account, and authenticated principal.
+- `scanned`: normalized records examined in this call, including nonmatches.
+- `warnings`: omitted-record or demo information.
+- `error`: null or `{code, message, retryable}`. Provider error bodies and credentials are never relayed.
 
-```json
-{
-  "id": "string",
-  "type": "email | message | call",
-  "thread_id": "string | null",
-  "from": "string", // Can be an email or an identity ID
-  "to": ["string"],
-  "subject": "string | null",
-  "body_preview": "string",
-  "timestamp": "ISO8601",
-  "is_read": "boolean"
-}
-```
+An empty incomplete page may precede matches. Incomplete results without a cursor indicate a failure or omission that pagination cannot fix. Within-page data changes cause `stale_cursor`; restart and deduplicate. Provider continuation pages are live data, not a frozen snapshot.
 
-### Calendar (`cap://calendar`)
+## Workflow batches
 
-Represents events and time-based commitments.
+`cap_changes` adds `workflow`, `batch_id`, and delivery semantics to a search result. Only unacknowledged item revisions are returned, scoped to account principal, shelf, and workflow. A batch expires after 24 hours. `cap_ack_changes` records its IDs/revision hashes atomically; replaying an acknowledgement produces `invalid_batch`. It never marks source mail read.
 
-```json
-{
-  "id": "string",
-  "type": "event | reminder | block",
-  "title": "string",
-  "start_time": "ISO8601",
-  "end_time": "ISO8601",
-  "all_day": "boolean",
-  "location": "string | null",
-  "attendees": [
-    {
-      "email": "string",
-      "status": "accepted | declined | tentative | pending"
-    }
-  ],
-  "status": "confirmed | tentative | cancelled"
-}
-```
+Use overlapping received-time/event windows. This mechanism cannot discover old messages changed outside the window, deleted items, or updates excluded by your filters. It is not a delta-sync API or an exactly-once notification system.
 
-### Docs (`cap://docs`)
-
-Represents notes, files, and knowledge artifacts.
-
-```json
-{
-  "id": "string",
-  "type": "note | file | snippet | bookmark",
-  "title": "string",
-  "content_preview": "string | null",
-  "url": "string | null",
-  "tags": ["string"]
-}
-```
-
-### Tasks (`cap://tasks`)
-
-Represents tasks, projects, and work items.
-
-```json
-{
-  "id": "string",
-  "type": "task | project | milestone",
-  "title": "string",
-  "status": "pending | active | blocked | completed | cancelled",
-  "priority": "low | medium | high | urgent",
-  "due_date": "ISO8601 | null",
-  "project": "string | null"
-}
-```
+The original five-shelf design and legacy script schema are retained in Git history; only the two shelves documented here are implemented by the runtime.

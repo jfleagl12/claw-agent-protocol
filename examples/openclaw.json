@@ -1,0 +1,13 @@
+{
+  "mcp": {
+    "servers": {
+      "cap": {
+        "command": "/absolute/path/to/claw-agent-protocol/.venv/bin/cap",
+        "args": ["--config", "/absolute/path/to/claw-agent-protocol/examples/demo.toml", "serve"],
+        "transport": "stdio",
+        "enabled": true,
+        "requestTimeoutMs": 180000
+      }
+    }
+  }
+}

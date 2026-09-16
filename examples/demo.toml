@@ -1,0 +1,7 @@
+timezone = "America/Chicago"
+state_dir = "~/.local/state/cap-demo"
+max_scan_pages = 5
+
+[[accounts]]
+name = "demo"
+provider = "demo"
