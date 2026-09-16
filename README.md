@@ -1,344 +1,96 @@
-# Claw Agent Protocol (CAP) Skill
+# Claw Agent Protocol (CAP)
 
-> **A production-grade skill for AI agents to interact with personal data through the Claw Agent Protocol.**
+A working, read-only personal-data service for AI agents. CAP gives Hermes, OpenClaw, and other MCP clients a consistent way to search Outlook mail and calendar events, prepare meetings, and build daily briefings with source links.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-1.0-blue.svg)](https://github.com/jfleagl12/claw-agent-protocol)
+**Version 0.2.0 is an initial runtime release.** It includes a real Microsoft Graph adapter and a synthetic demo. It does not send messages, edit calendars, or connect documents/tasks. Account login and live acceptance testing are required before relying on it with your mailbox.
 
-## Overview
+## Try it in two minutes
 
-The **Claw Agent Protocol (CAP) Skill** enables any AI agent to interact with a user's personal data in a structured, secure, and efficient manner. This skill provides a comprehensive framework for organizing, querying, and managing personal data across multiple sources.
+Requires Python 3.11+ on macOS or Linux. Windows needs IANA timezone data (install `tzdata`) and its usual `.venv\Scripts` paths.
 
-### What is CAP?
-
-CAP is a lightweight **Model Context Protocol (MCP) server** that acts as a real-time translation layer between a user's data sources (Gmail, Google Calendar, Notion, Slack, etc.) and AI agents. Instead of dealing with dozens of different APIs and data formats, agents can use a single, consistent interface.
-
-### Why This Skill?
-
-This skill transforms a general-purpose AI agent into a specialized personal data assistant by providing:
-
-- **Canonical Schema**: Consistent data structures across all sources
-- **Query Patterns**: Pre-built query examples for common use cases
-- **Security Guidelines**: Best practices for handling sensitive data
-- **Utility Scripts**: Production-ready tools for data validation, export, and query building
-- **30+ Use Cases**: Real-world scenarios demonstrating CAP's capabilities
-
-## Features
-
-### 📚 Comprehensive Documentation
-
-- **SKILL.md**: Main entry point with core concepts and usage instructions
-- **Schema Reference**: Complete canonical schema for all 5 shelves (Identity, Comms, Calendar, Docs, Tasks)
-- **Query Examples**: 50+ query patterns with filters and parameters
-- **Security Guide**: Data sensitivity tiers, permissions, and safe handling practices
-- **Use Cases**: 30 common scenarios from daily briefings to project management
-
-### 🛠️ Production-Ready Utilities
-
-1. **`generate_briefing.py`**: Format CAP data into readable daily briefings
-2. **`validate_cap_data.py`**: Validate data against canonical schema requirements
-3. **`export_cap_data.py`**: Export data to CSV, JSON, or Markdown formats
-4. **`build_query.py`**: Generate CAP queries from natural language
-
-### 🔒 Security-First Design
-
-- Sensitivity tier classification (S1, S2, S3)
-- Permission scoping and time-bounded grants
-- Human-in-the-loop gates for sensitive operations
-- Audit logging and data provenance tracking
-
-## Installation
-
-### For Manus AI Users
-
-1. Download the `.skill` file from the releases page
-2. In Manus, go to Settings → Skills
-3. Click "Add Skill" and select the downloaded file
-4. The skill will be automatically available for use
-
-### For Other AI Agents like Clawdbot, Moltbot, OpenClaw:
-
-1. Clone this repository or download the skill directory or copy and paste this repo link to your Openclaw ai agent and tell them to add the skill
-2. Place the `claw-agent-protocol` directory in your agent's skills folder
-3. Ensure your agent can read the `SKILL.md` file and execute Python scripts
-
-## Quick Start
-
-Once you've installed the skill and connected your CAP server, you can start using these prompts with your OpenClaw agent. Simply copy and paste these commands—no coding required.
-
-### Example 1: Get Your Daily Briefing
-
-**Copy this prompt:**
-```
-Give me my daily briefing using CAP
+```bash
+git clone https://github.com/jfleagl12/claw-agent-protocol.git
+cd claw-agent-protocol
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+cap --config examples/demo.toml doctor --probe
+cap --config examples/demo.toml briefing
+cap --config examples/demo.toml meeting --account demo --event-id meeting-1
 ```
 
-**What happens:** Your agent will fetch today's calendar events, due tasks, and recent communications, then format them into a readable summary.
+Demo records are clearly labeled and relative to today's date in the configured timezone. No account or API key is needed. CLI exit codes: 0 success, 1 connection/provider failure, 2 invalid configuration/input, 3 partial evidence or more pages.
 
----
+`state_dir` in the TOML file controls where private workflow metadata is stored; use a directory writable by your harness.
 
-### Example 2: Find High-Priority Tasks Due This Week
+## What is implemented
 
-**Copy this prompt:**
-```
-Show me all high-priority tasks due this week from my CAP data
-```
+| Tool | Result |
+|---|---|
+| `cap_status` | Configured accounts and enabled shelves; optional live connection probes |
+| `cap_search` | Structured, bounded mail/calendar retrieval with resumable pagination |
+| `cap_get` | A source-linked item and bounded preview by its source ID |
+| `cap_today_briefing` | Today's events and received mail, grouped by account/source |
+| `cap_meeting_context` | A selected event and recent correspondence with exact attendee addresses |
+| `cap_changes` | Unacknowledged items/revisions within a requested search window |
+| `cap_ack_changes` | Acknowledge successful handling in CAP's local metadata |
 
-**What happens:** Your agent will query your tasks shelf and return all pending high-priority items with due dates in the next 7 days.
+The harness writes the final summary from the returned evidence. CAP does not run a second LLM, invent priorities, or decide that an inferred commitment is confirmed.
 
----
+## Connect your Microsoft account
 
-### Example 3: Check Unread Emails from a Specific Person
+See [Microsoft 365 setup](docs/microsoft365.md). Register a public client application in Microsoft Entra, configure its client ID, then sign in:
 
-**Copy this prompt:**
-```
-Show me unread emails from john@example.com using CAP
-```
-
-**What happens:** Your agent will query your communications shelf and return all unread emails from that sender.
-
----
-
-### Example 4: Get This Week's Calendar Events
-
-**Copy this prompt:**
-```
-What's on my calendar this week? Use CAP to get the events
+```bash
+cp examples/microsoft365.toml config.local.toml
+# Edit client_id, tenant, account name, timezone, and state_dir first.
+cap --config config.local.toml auth login --account work
+cap --config config.local.toml doctor --probe
 ```
 
-**What happens:** Your agent will fetch all confirmed calendar events for the next 7 days.
+Requested delegated permissions are `User.Read`, `Mail.Read`, and `Calendars.Read`; disabled shelves omit their permission. Tokens use MSAL and the OS credential store. There is no client secret and no plaintext token-file fallback. Some organizations restrict device login or require administrator consent.
 
----
+## Connect an agent
 
-### Example 5: Find All Notes Tagged with a Specific Topic
+CAP uses local MCP **stdio**. It binds no network port. Register the absolute path to `.venv/bin/cap` with arguments `--config`, an absolute TOML path, and `serve`.
 
-**Copy this prompt:**
-```
-Find all my notes tagged with "project-alpha" using CAP
-```
+- [Hermes and OpenClaw configuration](docs/harnesses.md)
+- [Portable agent skill](SKILL.md)
+- [Structured query examples](references/query_examples.md)
+- [Data contract and result semantics](references/schema.md)
+- [Security boundaries](references/security.md)
 
-**What happens:** Your agent will search your docs shelf for notes with that tag.
+The skill teaches workflows; the separately installed runtime supplies the tools. Installing `SKILL.md` alone does not connect accounts.
 
----
+## Reliability and scope
 
-### Example 6: Get Client Communication History
+- Each source reports `complete`, `next_cursor`, `warnings`, and `error`. No results and a failed query are different outcomes.
+- Queries require offset-aware dates and use half-open intervals. Calendar searches include events overlapping the interval. Daily workflows respect daylight saving time.
+- Search matches literal text in subjects/previews and exact participant addresses. It is not full-body, attachment, semantic, or fuzzy company search.
+- Cursors are opaque, expire after one hour, and are bound to the account principal and exact request. Within-page changes invalidate a cursor. Provider paging is not a transactionally consistent snapshot: retry overlapping windows and deduplicate when processing changing mailboxes.
+- Results carry source IDs, source URLs when available, retrieval times, and an explicit untrusted-content marker.
+- Workflow acknowledgements survive restarts. Delivery is **at least once**, not exactly once; no external delivery occurs inside CAP. The harness owns scheduling and notification delivery.
+- Microsoft support currently covers the signed-in mailbox and default calendar through the global Graph endpoint. Shared mailboxes, other calendars, national clouds, documents, contacts, tasks, and Google Workspace are not yet implemented.
 
-**Copy this prompt:**
-```
-Show me all communications with Acme Corp from the last 30 days using CAP
-```
+## Development and verification
 
-**What happens:** Your agent will query both your identity shelf (to find Acme Corp contacts) and comms shelf (to get recent messages/emails).
-
----
-
-### Example 7: List All Blocked Tasks
-
-**Copy this prompt:**
-```
-What tasks are currently blocked? Check CAP
-```
-
-**What happens:** Your agent will query your tasks shelf for items with status="blocked" and show you what's stuck.
-
----
-
-### Example 8: Find Meetings with a Specific Person This Month
-
-**Copy this prompt:**
-```
-Show me all meetings with sarah@example.com this month from CAP
+```bash
+python -m pip install -e '.[dev]'
+pytest -q
+ruff check src tests
+ruff format --check src tests
+python -m build
 ```
 
-**What happens:** Your agent will query your calendar shelf filtered by attendee email.
+Tests exercise mocked Microsoft responses, authentication/account binding, pagination, failures, date boundaries, workflow replay, and an actual MCP stdio subprocess handshake. CI runs Python 3.11–3.13. [Acceptance checks](docs/acceptance.md) distinguish automated verification from live-account and native-harness verification.
 
----
+The original scripts under `scripts/` are retained for compatibility as standalone **legacy helpers**. They use the older data format and are not used by the server. Their keyword query builder is not the runtime query engine. The previous documentation is available in Git history.
 
-### Example 9: Get All VIP Contacts
+## Next increments
 
-**Copy this prompt:**
-```
-Show me all contacts tagged as VIP in CAP
-```
+1. Live acceptance on Microsoft accounts and both native harnesses.
+2. Additional calendar selection, provider delta feeds, and explicit state-retention controls.
+3. Google Workspace and document/task adapters using the same service contract.
+4. Carefully scoped writes with previews, authorization, duplicate prevention, and verified receipts.
 
-**What happens:** Your agent will query your identity shelf for people/orgs with the "vip" tag.
-
----
-
-### Example 10: Search Across All Documents
-
-**Copy this prompt:**
-```
-Search my CAP documents for anything related to "quarterly budget"
-```
-
-**What happens:** Your agent will use the knowledge_search tool to find all docs, notes, and files mentioning that topic.
-
----
-
-### Example 11: Weekly Planning Session
-
-**Copy this prompt:**
-```
-Help me plan next week. Show me my calendar, pending tasks, and any upcoming deadlines from CAP
-```
-
-**What happens:** Your agent will aggregate data from multiple shelves (calendar, tasks) to give you a comprehensive weekly overview.
-
----
-
-### Example 12: Export Your Tasks to a File
-
-**Copy this prompt:**
-```
-Export all my pending tasks from CAP to a markdown file
-```
-
-**What happens:** Your agent will query your tasks shelf and use the export script to create a formatted markdown file you can download.
-
----
-
-## Pro Tips
-
-- **Be specific about time ranges**: "this week", "next month", "last 30 days"
-- **Mention CAP explicitly**: This helps your agent know to use this skill
-- **Combine shelves**: Ask for cross-referenced data like "meetings and related emails"
-- **Use tags**: If you tag your data, you can filter by tags in your prompts
-- **Ask for exports**: Your agent can export data to CSV, JSON, or Markdown formats
-
-## Architecture
-
-```
-claw-agent-protocol/
-├── SKILL.md                    # Main skill instructions (104 lines)
-├── LICENSE                     # MIT License
-├── README.md                   # This file
-├── references/
-│   ├── schema.md              # Canonical schema definitions (118 lines)
-│   ├── query_examples.md      # Query patterns and filters (232 lines)
-│   ├── security.md            # Security best practices (297 lines)
-│   └── use_cases.md           # 30 common scenarios (466 lines)
-└── scripts/
-    ├── generate_briefing.py   # Daily briefing formatter (48 lines)
-    ├── validate_cap_data.py   # Schema validator (299 lines)
-    ├── export_cap_data.py     # Data exporter (306 lines)
-    └── build_query.py         # Natural language query builder (255 lines)
-```
-
-**Total**: 2,146 lines of production-grade code and documentation
-
-## CAP Shelves
-
-CAP organizes personal data into 5 canonical shelves:
-
-| Shelf | URI | Description |
-|-------|-----|-------------|
-| **Identity** | `cap://identity` | People, organizations, contacts |
-| **Comms** | `cap://comms` | Messages, emails, threads |
-| **Calendar** | `cap://calendar` | Events, availability, meetings |
-| **Docs** | `cap://docs` | Notes, files, snippets, bookmarks |
-| **Tasks** | `cap://tasks` | Tasks, projects, milestones |
-
-Each shelf has a consistent schema with common metadata (id, timestamps, source, confidence, sensitivity).
-
-## Use Cases
-
-This skill supports 30+ common use cases, including:
-
-### Personal Productivity
-- Daily briefing generation
-- Weekly planning assistance
-- Task prioritization
-- Meeting preparation
-- Email triage
-
-### Client & Relationship Management
-- Client communication history
-- Follow-up reminders
-- Relationship strength analysis
-- Meeting scheduling optimization
-- Deliverable tracking
-
-### Knowledge Management
-- Cross-reference search
-- Meeting notes consolidation
-- Document version tracking
-- Research thread reconstruction
-- Knowledge gap identification
-
-### Time & Availability
-- Time audits
-- Focus time protection
-- Availability sharing
-- Overcommitment detection
-- Travel planning integration
-
-### Project & Team Coordination
-- Project status dashboards
-- Dependency mapping
-- Team workload balancing
-- Milestone tracking
-- Standup report generation
-
-### Personal Life Management
-- Family calendar coordination
-- Health appointment tracking
-- Financial deadline management
-- Personal goal tracking
-- Digital life audit
-
-## Security & Privacy
-
-This skill implements security best practices:
-
-- **Data Sensitivity Tiers**: S1 (public), S2 (internal), S3 (sensitive)
-- **Permission Scoping**: Read/write permissions per shelf
-- **Time-Bounded Grants**: Temporary access for sensitive operations
-- **Human-in-the-Loop**: Confirmation required for destructive actions
-- **Audit Logging**: Append-only logs for critical operations
-- **Data Provenance**: Full traceability to source systems
-
-## Requirements
-
-- Python 3.10+
-- Access to a CAP MCP server
-- MCP-compatible AI agent (OpenClaw, Claude Desktop, etc.)
-
-## Contributing
-
-Contributions are welcome! This skill is designed to be extended and improved by the community.
-
-### How to Contribute
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### Areas for Contribution
-
-- Additional utility scripts
-- More use case examples
-- Connector implementations for new data sources
-- Improved query patterns
-- Enhanced security features
-- Documentation improvements
-
-## License
-
-This skill is licensed under the MIT License. See [LICENSE](LICENSE) for details.
-
-## Author
-
-**Jason Fleagle** - Chief AI Officer
-
-CAP is created by Jason Fleagle. Jason is a Chief AI Officer and Growth Consultant working with global brands to help with their successful AI adoption and management. He is also a writer, entrepreneur, and consultant specializing in tech, marketing, and growth. He helps humanize data—so every growth decision an organization makes is rooted in clarity and confidence. Jason has helped lead the development and delivery of over 500 AI projects & tools, and frequently conducts training workshops to help companies understand and adopt AI. With a strong background in digital marketing, content strategy, and technology, he combines technical expertise with business acumen to create scalable solutions. He is also a content creator, producing videos, workshops, and thought leadership on AI, entrepreneurship, and growth. He continues to explore ways to leverage AI for good and improve human-to-human connections while balancing family, business, and creative pursuits.
-
-## Acknowledgments
-- Inspired by the Model Context Protocol (MCP) standard
-
-
----
-
-**Built with ❤️ by a senior software engineer & AI Architect for the AI agent community.**
+Created by Jason Fleagle. [MIT license](LICENSE).

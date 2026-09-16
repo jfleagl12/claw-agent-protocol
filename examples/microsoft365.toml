@@ -1,0 +1,10 @@
+timezone = "America/Chicago"
+state_dir = "~/.local/state/cap"
+max_scan_pages = 5
+
+[[accounts]]
+name = "work"
+provider = "microsoft365"
+client_id = "REPLACE_WITH_ENTRA_APPLICATION_CLIENT_ID"
+tenant = "common"
+shelves = ["comms", "calendar"]
